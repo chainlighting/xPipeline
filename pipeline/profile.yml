@@ -1,13 +1,28 @@
 - "consumer.Profiler":
-    Runs: 200000
-    Batches: 50
-    Characters: "abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUFVXYZ 0123456789 .,!;:-_"
+    Enable: true
+    Runs: 100000
+    Batches: 10
+    Characters: "abcdefghijklmnopqrstuvwxyz .,!;:-_"
     Message: "%1s"
-    Stream: "profile"    
-
-- "producer.Null":
     Stream: "profile"
+    KeepRunning: false
+
+- "consumer.Profiler":
+    Enable: true
+    Runs: 100000
+    Batches: 10
+    Characters: "abcdefghijklmnopqrstuvwxyz .,!;:-_"
+    Message: "%1s"
+    Stream: "profile"
+    KeepRunning: false    
 
 - "producer.Console":
-    Formatter: "format.Envelope"
+    Enable: true
     Stream: "_GOLLUM_"
+    Formatter: "format.Envelope"
+
+- "producer.Benchmark":
+    Enable: true
+    Stream: 
+        - "profile"
+        - "_DROPPED_"

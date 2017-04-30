@@ -42,15 +42,12 @@ func (server *MetricServer) Start(port int) {
 	}
 
 	var err error
-	laddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", port))
-	server.listen, err = net.ListenTCP("tcp", laddr)
+	server.listen, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Print("Metrics: ", err)
 		time.AfterFunc(time.Second*5, func() { server.Start(port) })
 		return
 	}
-
-    log.Print("Metrics service started on ",port)
 
 	server.running = true
 	for server.running {

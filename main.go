@@ -19,6 +19,8 @@ import (
 	_ "github.com/chainlighting/xPipeline/consumer"
 	"github.com/chainlighting/xPipeline/core"
 	"github.com/chainlighting/xPipeline/core/log"
+	_ "github.com/chainlighting/xPipeline/filter"
+	_ "github.com/chainlighting/xPipeline/format"
 	_ "github.com/chainlighting/xPipeline/producer"
 	"github.com/chainlighting/xPipeline/shared"
 	_ "github.com/chainlighting/xPipeline/stream"
@@ -33,7 +35,7 @@ import (
 const (
 	gollumMajorVer = 0
 	gollumMinorVer = 4
-	gollumPatchVer = 4
+	gollumPatchVer = 5
 	gollumDevVer   = 0
 )
 
@@ -82,7 +84,7 @@ func main() {
 
 	if *flagHelp || *configFile == "" {
 		printFlags()
-		return // ### return, nothing to do ###
+		return // ### exit, nothing to do ###
 	}
 
 	// Read config
@@ -90,10 +92,17 @@ func main() {
 	config, err := core.ReadConfig(*configFile)
 	if err != nil {
 		fmt.Printf("Config: %s\n", err.Error())
-		return // ### return, config error ###
-	} else if *flagTestConfigFile != "" {
+		os.Exit(1) // ### exit, config error ###
+	}
+
+	if *flagTestConfigFile != "" {
 		fmt.Printf("Config: %s parsed as ok.\n", *configFile)
-		newMultiplexer(config, false)
+		_, err := newMultiplexer(config, false)
+		if err != nil {
+			fmt.Println(err)
+			Log.SetWriter(os.Stdout)
+			os.Exit(1) // ### exit, config error ###
+		}
 		return // ### return, only test config ###
 	}
 
@@ -150,6 +159,6 @@ func main() {
 
 	// Start the multiplexer
 
-	plex := newMultiplexer(config, *flagProfile)
+	plex, _ := newMultiplexer(config, *flagProfile)
 	plex.run()
 }
