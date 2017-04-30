@@ -1,0 +1,14 @@
+- "native.PcapHTTP":
+    Enable: true
+    Interface: "eth1"
+    Filter: "dst port 8000"
+    Promiscuous: true
+    TimeoutMs: 3000
+    Stream:
+      - "console"
+
+- "producer.Console":
+    Formatter: "format.Envelope"
+    Stream:
+        - "*"
+        - "_GOLLUM_"    

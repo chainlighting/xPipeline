@@ -1,0 +1,13 @@
+- "consumer.Profiler":
+    Runs: 200000
+    Batches: 50
+    Characters: "abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUFVXYZ 0123456789 .,!;:-_"
+    Message: "%1s"
+    Stream: "profile"    
+
+- "producer.Null":
+    Stream: "profile"
+
+- "producer.Console":
+    Formatter: "format.Envelope"
+    Stream: "_GOLLUM_"

@@ -1,0 +1,23 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "kBeNcaKk56FguvPSUCEaH6AxpRc=",
+			"path": "github.com/golang/protobuf/proto",
+			"revision": "2bba0603135d7d7f5cb73b2125beeda19c09f4ef",
+			"revisionTime": "2017-03-31T03:19:02Z"
+		},
+		{
+			"checksumSHA1": "C8upT1jWerT50g4/kkTJo7s4B6A=",
+			"path": "gopkg.in/docker/docker.v1/pkg/mflag",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "pXfFwEJEuUhEK/f8Aei5OZFgfqY=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": ""
+		}
+	],
+	"rootPath": "github.com/chainlighting/xPipeline"
+}

@@ -1,0 +1,43 @@
+- "consumer.Socket":
+    Address: ":25880"
+    Partitioner: "delimiter"
+    Delimiter: "\r\n"
+    Acknowledge: "OK"
+    Stream:
+      - "console"
+      - "consoleJSON"
+
+- "consumer.Console":
+    Stream: 
+      - "console"
+      - "consoleJSON"
+
+- "stream.Broadcast":
+    Formatter: "format.Envelope"
+    Filter: "filter.RegExp"
+    FilterExpression: "gollum$"
+    EnvelopePrefix: "<message>"
+    EnvelopePostfix: "</message>"
+    Stream: "console"
+
+- "stream.Broadcast":
+    Formatter: "format.Envelope"
+    EnvelopePrefix: "{message:\""
+    EnvelopePostfix: "\"}"
+    Stream: "consoleJSON"
+
+- "producer.Console":
+    Formatter: "format.Envelope"
+    Stream:
+        - "*"
+        - "_GOLLUM_"
+
+- "consumer.Proxy":
+    Address: ":5880"
+    Partitioner: "delimiter"
+    Delimiter: "\r\n"
+    Acknowledge: "OK1"
+    Formatter: "format.Envelope"
+    Stream:
+        - "console"
+        - "consoleJSON"

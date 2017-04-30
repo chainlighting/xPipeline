@@ -1,0 +1,22 @@
+- "consumer.File":
+    Enable: true
+    ID: ""
+    Fuse: ""
+    Stream:
+        - "consoleJSON"
+    File: "/var/log/syslog.1"
+    DefaultOffset: "Oldest"
+    OffsetFile: ""
+    Delimiter: "\n"
+
+- "stream.Broadcast":
+    Formatter: "format.Envelope"
+    EnvelopePrefix: "{message:\""
+    EnvelopePostfix: "\"}"
+    Stream: "consoleJSON"
+
+- "producer.Console":
+    Formatter: "format.Envelope"
+    Stream:
+        - "*"
+        - "_GOLLUM_"
