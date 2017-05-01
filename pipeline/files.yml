@@ -1,0 +1,42 @@
+- "consumer.Files":
+    Enable: true
+    Method: "local"
+    Concurrency: 3
+    Path: "/var/dir/file"
+    Remain: true
+    Retry: 3
+    Retrydelay: 30
+
+- "comsumer.Files":
+    Enable: true
+    Method: "local"
+    Concurrency: 3
+    Path: "/var/dir/"
+    Remain: true
+    Retry: 3
+    Retrydelay: 30
+
+- "consumer.Files":
+    Enable: false
+    Method: "ftp"
+    Username: "user"
+    Passwd: "passwd"
+    Concurrency: 3
+    Path: "/var/dir/"
+    Retry: 3
+    Retrydelay: 30
+
+- "comsumer.Files":
+    Enable: false
+    Method: "ftp"
+    Username: "user"
+    Passwd: "passwd"
+    Concurrency: 3
+    Path: "/var/dir/file"
+    Retry: 3
+    Retrydelay: 30
+
+- "producer.Console":
+    Enable: true
+    Stream: "_GOLLUM_"
+    Formatter: "format.Envelope"

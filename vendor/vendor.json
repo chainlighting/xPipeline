@@ -9,6 +9,30 @@
 			"revisionTime": "2017-03-31T03:19:02Z"
 		},
 		{
+			"checksumSHA1": "CDy63SjYuHeeWf9DEDJ/zUvcnb0=",
+			"path": "github.com/jlaffaye/ftp",
+			"revision": "0895dc7f07e342edfc22cb884a51e34275cc1e4b",
+			"revisionTime": "2017-04-15T18:58:00Z"
+		},
+		{
+			"checksumSHA1": "KQhA4EQp4Ldwj9nJZnEURlE6aQw=",
+			"path": "github.com/kr/fs",
+			"revision": "2788f0dbd16903de03cb8186e5c7d97b69ad387b",
+			"revisionTime": "2013-11-06T22:25:44Z"
+		},
+		{
+			"checksumSHA1": "ynJSWoF6v+3zMnh9R0QmmG6iGV8=",
+			"path": "github.com/pkg/errors",
+			"revision": "ff09b135c25aae272398c51a07235b90a75aa4f0",
+			"revisionTime": "2017-03-16T20:15:38Z"
+		},
+		{
+			"checksumSHA1": "GM8ioORTp1BH7KraT6GhmrB76t4=",
+			"path": "github.com/pkg/sftp",
+			"revision": "dddd9cf3c7889aa0fefd2e8a529367a3e1f3b669",
+			"revisionTime": "2017-04-25T22:30:31Z"
+		},
+		{
 			"checksumSHA1": "C8upT1jWerT50g4/kkTJo7s4B6A=",
 			"path": "gopkg.in/docker/docker.v1/pkg/mflag",
 			"revision": ""
