@@ -1,4 +1,4 @@
-dist/
+dist/*
 xPipeline
 xPipeline.pid
 xPipeline.exe
@@ -12,6 +12,6 @@ vendor/**/*
 !vendor/**/*.go
 !vendor/**/*.s
 !vendor/**/LICENSE
-vendor/**/*_test.go
+!vendor/**/*_test.go
 **/.DS_Store
 .vscode

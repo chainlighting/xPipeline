@@ -1,36 +1,33 @@
-- "consumer.Files":
+- "consumer.LocalFiles":
     Enable: true
-    Method: "local"
-    Concurrency: 3
-    Path: "/var/dir/file"
+    Concurrency: 10
+    Path: "/var/log/kern.log"
+    ExceptPath:
+      - "/run"
+      - "/proc"
+      - "/var"
+      - "/dev"
+      - "/vagrant"
     Remain: true
-    Retry: 3
-    Retrydelay: 30
+    KeepRunning: false
 
-- "comsumer.Files":
-    Enable: true
-    Method: "local"
+- "comsumer.LocalFiles":
+    Enable: false
     Concurrency: 3
     Path: "/var/dir/"
     Remain: true
     Retry: 3
     Retrydelay: 30
 
-- "consumer.Files":
+- "consumer.LocalFiles":
     Enable: false
-    Method: "ftp"
-    Username: "user"
-    Passwd: "passwd"
     Concurrency: 3
     Path: "/var/dir/"
     Retry: 3
     Retrydelay: 30
 
-- "comsumer.Files":
+- "comsumer.LocalFiles":
     Enable: false
-    Method: "ftp"
-    Username: "user"
-    Passwd: "passwd"
     Concurrency: 3
     Path: "/var/dir/file"
     Retry: 3
