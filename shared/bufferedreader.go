@@ -81,7 +81,7 @@ type BufferReadCallback func(msg []byte, sequence uint64)
 
 // MsgCheckCompleteCallback defines the function for split a completed msg from bytestream.
 // parseComplex.
-type MsgCheckCompleteCallback func(data []byte, dataSize int) (int,int)
+type MsgCheckCompleteCallback func(data []byte) (int,int,int)
 
 // BufferDataInvalid is returned when a parsing encounters an error
 var BufferDataInvalid = bufferError("Invalid data")
@@ -96,11 +96,12 @@ var BufferDataInvalid = bufferError("Invalid data")
 type BufferedReader struct {
 	data       []byte
 	delimiter  []byte
-	parse      func() ([]byte, int)
-	checkComplete func([]byte,int) (int,int)
+	parse      func() ([]byte)
+	checkComplete MsgCheckCompleteCallback
 	sequence   uint64
 	paramMLE   int
 	growSize   int
+	begin      int
 	end        int
 	encoding   binary.ByteOrder
 	flags      BufferedReaderFlags
@@ -124,6 +125,7 @@ func NewBufferedReader(bufferSize int, flags BufferedReaderFlags, offsetOrLength
 		paramMLE:   offsetOrLength,
 		encoding:   binary.LittleEndian,
 		sequence:   0,
+		begin:      0,
 		end:        0,
 		flags:      flags,
 		growSize:   bufferSize,
@@ -135,29 +137,28 @@ func NewBufferedReader(bufferSize int, flags BufferedReaderFlags, offsetOrLength
 		buffer.encoding = binary.BigEndian
 	}
 
-	if flags&BufferedReaderFlagMaskMLE == 0 {
-		buffer.parse = buffer.parseDelimiter
-	} else {
-		switch flags & BufferedReaderFlagMaskMLE {
-		default:
-			buffer.parse = buffer.parseMLEText
-		case BufferedReaderFlagMLE8:
-			buffer.parse = buffer.parseMLE8
-		case BufferedReaderFlagMLE16:
-			buffer.parse = buffer.parseMLE16
-		case BufferedReaderFlagMLE32:
-			buffer.parse = buffer.parseMLE32
-		case BufferedReaderFlagMLE64:
-			buffer.parse = buffer.parseMLE64
-		case BufferedReaderFlagMLEFixed:
-			buffer.parse = buffer.parseMLEFixed
+	if nil == buffer.checkComplete {
+		if 0 == flags&BufferedReaderFlagMaskMLE {
+			buffer.checkComplete = buffer.checkCompleteDelimiter
+		} else {
+			switch flags & BufferedReaderFlagMaskMLE {
+			default:
+				buffer.checkComplete = buffer.checkCompleteMLEText
+			case BufferedReaderFlagMLE8:
+				buffer.checkComplete = buffer.checkCompleteMLE8
+			case BufferedReaderFlagMLE16:
+				buffer.checkComplete = buffer.checkCompleteMLE16
+			case BufferedReaderFlagMLE32:
+				buffer.checkComplete = buffer.checkCompleteMLE32
+			case BufferedReaderFlagMLE64:
+				buffer.checkComplete = buffer.checkCompleteMLE64
+			case BufferedReaderFlagMLEFixed:
+				buffer.checkComplete = buffer.checkCompleteMLEFixed
+			}
 		}
 	}
 
-	// complex msg parse setting
-	if checkComplete != nil {
-		buffer.parse = buffer.parseComplex
-	}
+	buffer.parse = buffer.parseComplex
 
 	return &buffer
 }
@@ -165,127 +166,172 @@ func NewBufferedReader(bufferSize int, flags BufferedReaderFlags, offsetOrLength
 // Reset clears the buffer by resetting its internal state
 func (buffer *BufferedReader) Reset(sequence uint64) {
 	buffer.sequence = sequence
+	buffer.begin = 0
 	buffer.end = 0
 	buffer.incomplete = true
 }
 
 // general message extraction part of all parser methods
-func (buffer *BufferedReader) extractMessage(messageLen int, msgStartIdx int) ([]byte, int) {
-	nextMsgIdx := msgStartIdx + messageLen
-	if nextMsgIdx > buffer.end {
-		return nil, 0 // ### return, incomplete ###
+// retrun msgData []byte
+func (buffer *BufferedReader) extractMessage(msgLen int, msgStartOffset int,padLen int) ([]byte) {
+    msgNextBegin := buffer.begin + msgStartOffset + msgLen + padLen
+    if msgNextBegin > buffer.end {
+		return nil // ### return, incomplete ###
 	}
-	if buffer.flags&BufferedReaderFlagEverything != 0 {
-		msgStartIdx = 0
-	}
-	return buffer.data[msgStartIdx:nextMsgIdx], nextMsgIdx
+	dataRtn := buffer.data[buffer.begin + msgStartOffset:buffer.begin + msgStartOffset + msgLen]
+	buffer.begin = msgNextBegin
+	return dataRtn
 }
 
 // messages parsed by external MsgCheckCompleteCallback
-// return: msgData,nextMsgIdx
-func (buffer *BufferedReader) parseComplex() ([]byte,int) {
+// return: msgData []byte
+func (buffer *BufferedReader) parseComplex() ([]byte) {
 	if buffer.checkComplete != nil {
-		msgLen, msgStartIdx := buffer.checkComplete(buffer.data,buffer.end)
+		msgLen, msgStartOffset, padLen := buffer.checkComplete(buffer.data[buffer.begin:buffer.end])
 		if msgLen > 0 {
 			// msg completed
-			return buffer.extractMessage(msgLen,msgStartIdx)
+			return buffer.extractMessage(msgLen,msgStartOffset,padLen)
 		}
 	}
 
 	// no completed msg
-	return nil,0
+	return nil
 }
 
 // messages have a fixed size
-func (buffer *BufferedReader) parseMLEFixed() ([]byte, int) {
-	return buffer.extractMessage(buffer.paramMLE, 0)
+func (buffer *BufferedReader) checkCompleteMLEFixed(data []byte) (int,int,int) {
+	if len(data) >= buffer.paramMLE {
+		return buffer.paramMLE,0,0
+	}
+	// not complete
+	return 0,0,0
 }
 
 // messages are separated by a delimiter string
-func (buffer *BufferedReader) parseDelimiter() ([]byte, int) {
-	delimiterIdx := bytes.Index(buffer.data[:buffer.end], buffer.delimiter)
+func (buffer *BufferedReader) checkCompleteDelimiter(data []byte) (int,int,int) {
+	delimiterIdx := bytes.Index(data, buffer.delimiter)
 	if delimiterIdx == -1 {
-		return nil, 0 // ### return, incomplete ###
+		return 0, 0, 0 // ### return, incomplete ###
 	}
-
-	messageLen := delimiterIdx
+	msgLen := delimiterIdx
+	padLen := len(buffer.delimiter)
 	if buffer.flags&BufferedReaderFlagEverything != 0 {
-		messageLen += len(buffer.delimiter)
+		msgLen += padLen
+		padLen = 0
 	}
-
-	data, nextMsgIdx := buffer.extractMessage(messageLen, 0)
-
-	if data != nil && buffer.flags&BufferedReaderFlagEverything == 0 {
-		nextMsgIdx += len(buffer.delimiter)
-	}
-	return data, nextMsgIdx
+	return msgLen,0,padLen
 }
 
 // messages are separeated length encoded by ASCII number and (an optional)
 // delimiter.
-func (buffer *BufferedReader) parseMLEText() ([]byte, int) {
-	messageLen, msgStartIdx := Btoi(buffer.data[buffer.paramMLE:buffer.end])
-	if msgStartIdx == 0 {
-		return nil, -1 // ### return, malformed ###
+func (buffer *BufferedReader) checkCompleteMLEText(data []byte) (int,int,int) {
+	if len(data) <= buffer.paramMLE {
+		return 0, 0, 0
+	}
+	msgLen, msgStartOffset := Btoi(data[buffer.paramMLE:])
+	if msgStartOffset == 0 {
+		return 0, 0, 0 // ### return, malformed ###
 	}
 
-	msgStartIdx += buffer.paramMLE
+	msgStartOffset += buffer.paramMLE
 	// Read delimiter if necessary (check if valid runlength)
-	if delimiterLen := len(buffer.delimiter); delimiterLen > 0 {
-		msgStartIdx += delimiterLen
-		if msgStartIdx >= buffer.end {
-			return nil, 0 // ### return, incomplete ###
-		}
-		if !bytes.Equal(buffer.data[msgStartIdx-delimiterLen:msgStartIdx], buffer.delimiter) {
-			return nil, -1 // ### return, malformed ###
+	padLen := len(buffer.delimiter)
+	if padLen > 0 {
+		msgStartOffset += padLen
+		if !bytes.Equal(data[msgStartOffset-padLen:msgStartOffset], buffer.delimiter) {
+			return 0, 0, 0 // ### return, malformed ###
 		}
 	}
 
-	return buffer.extractMessage(int(messageLen), msgStartIdx)
+	if (int(msgLen) + msgStartOffset) > len(data) {
+		return 0, 0, 0 // incomplete
+	}
+
+	if buffer.flags&BufferedReaderFlagEverything != 0 {
+		return int(msgLen) + msgStartOffset,0,0
+	} else {
+		return int(msgLen), msgStartOffset,0
+	}
 }
 
 // messages are separated binary length encoded
-func (buffer *BufferedReader) parseMLE8() ([]byte, int) {
-	var messageLen uint8
-	reader := bytes.NewReader(buffer.data[buffer.paramMLE:buffer.end])
-	err := binary.Read(reader, buffer.encoding, &messageLen)
+func (buffer *BufferedReader) checkCompleteMLE8(data []byte) (int,int,int) {
+	var msgLen uint8
+	reader := bytes.NewReader(data[buffer.paramMLE:])
+	err := binary.Read(reader, buffer.encoding, &msgLen)
 	if err != nil {
-		return nil, -1 // ### return, malformed ###
+		return 0, -1, 0 // ### return, malformed ###
 	}
-	return buffer.extractMessage(int(messageLen), buffer.paramMLE+1)
+
+    msgStartOffset := buffer.paramMLE + 1
+	if (int(msgLen) + msgStartOffset) > len(data) {
+		return 0, 0, 0 // incomplete
+	}    
+	if buffer.flags&BufferedReaderFlagEverything != 0 {
+		return int(msgLen) + msgStartOffset,0,0
+	} else {
+		return int(msgLen), msgStartOffset,0
+	}
 }
 
 // messages are separated binary length encoded
-func (buffer *BufferedReader) parseMLE16() ([]byte, int) {
-	var messageLen uint16
-	reader := bytes.NewReader(buffer.data[buffer.paramMLE:buffer.end])
-	err := binary.Read(reader, buffer.encoding, &messageLen)
+func (buffer *BufferedReader) checkCompleteMLE16(data []byte) (int,int,int) {
+	var msgLen uint16
+	reader := bytes.NewReader(data[buffer.paramMLE:])
+	err := binary.Read(reader, buffer.encoding, &msgLen)
 	if err != nil {
-		return nil, -1 // ### return, malformed ###
+		return 0, -1, 0 // ### return, malformed ###
 	}
-	return buffer.extractMessage(int(messageLen), buffer.paramMLE+2)
+
+	msgStartOffset := buffer.paramMLE + 2
+	if (int(msgLen) + msgStartOffset) > len(data) {
+		return 0, 0, 0 // incomplete
+	}    
+	if buffer.flags&BufferedReaderFlagEverything != 0 {
+		return int(msgLen) + msgStartOffset,0,0
+	} else {
+		return int(msgLen), msgStartOffset,0
+	}
 }
 
 // messages are separated binary length encoded
-func (buffer *BufferedReader) parseMLE32() ([]byte, int) {
-	var messageLen uint32
-	reader := bytes.NewReader(buffer.data[buffer.paramMLE:buffer.end])
-	err := binary.Read(reader, buffer.encoding, &messageLen)
+func (buffer *BufferedReader) checkCompleteMLE32(data []byte) (int,int,int) {
+	var msgLen uint32
+	reader := bytes.NewReader(data[buffer.paramMLE:])
+	err := binary.Read(reader, buffer.encoding, &msgLen)
 	if err != nil {
-		return nil, -1 // ### return, malformed ###
+		return 0, -1, 0 // ### return, malformed ###
 	}
-	return buffer.extractMessage(int(messageLen), buffer.paramMLE+4)
+
+	msgStartOffset := buffer.paramMLE + 4
+	if (int(msgLen) + msgStartOffset) > len(data) {
+		return 0, 0, 0 // incomplete
+	}    
+	if buffer.flags&BufferedReaderFlagEverything != 0 {
+		return int(msgLen) + msgStartOffset,0,0
+	} else {
+		return int(msgLen), msgStartOffset,0
+	}
 }
 
 // messages are separated binary length encoded
-func (buffer *BufferedReader) parseMLE64() ([]byte, int) {
-	var messageLen uint64
-	reader := bytes.NewReader(buffer.data[buffer.paramMLE:buffer.end])
-	err := binary.Read(reader, buffer.encoding, &messageLen)
+func (buffer *BufferedReader) checkCompleteMLE64(data []byte) (int,int,int) {
+	var msgLen uint64
+	reader := bytes.NewReader(data[buffer.paramMLE:])
+	err := binary.Read(reader, buffer.encoding, &msgLen)
 	if err != nil {
-		return nil, -1 // ### return, malformed ###
+		return 0, -1, 0 // ### return, malformed ###
 	}
-	return buffer.extractMessage(int(messageLen), buffer.paramMLE+8)
+
+	msgStartOffset := buffer.paramMLE + 8
+	if (int(msgLen) + msgStartOffset) > len(data) {
+		return 0, 0, 0 // incomplete
+	}    
+	if buffer.flags&BufferedReaderFlagEverything != 0 {
+		return int(msgLen) + msgStartOffset,0,0
+	} else {
+		return int(msgLen), msgStartOffset,0
+	}
 }
 
 // ReadAll calls ReadOne as long as there are messages in the stream.
@@ -320,31 +366,36 @@ func (buffer *BufferedReader) ReadOne(reader io.Reader) (data []byte, seq uint64
 		bytesRead, err := reader.Read(buffer.data[buffer.end:])
 
 		if err != nil && err != io.EOF {
-			return nil, 0, buffer.end > 0, err // ### return, error reading ###
+			return nil, 0, (buffer.end - buffer.begin) > 0, err // ### return, error reading ###
 		}
 
 		if bytesRead == 0 {
-			return nil, 0, buffer.end > 0, err // ### return, no data ###
+			return nil, 0, (buffer.end - buffer.begin) > 0, err // ### return, no data ###
 		}
 
 		buffer.end += bytesRead
 		buffer.incomplete = false
 	}
 
-	msgData, nextMsgIdx := buffer.parse()
-
-	if nextMsgIdx == -1 {
-		buffer.end = 0
-		buffer.incomplete = true
-		return nil, 0, true, BufferDataInvalid // ### return, invalid data ###
-	}
+	msgData := buffer.parse()
 
 	if msgData == nil {
+		// check empty
+		if buffer.begin == buffer.end {
+			buffer.Reset(buffer.sequence)
+			return nil,0,true,err
+		}
 		// Check if buffer needs to be resized
 		if len(buffer.data) == buffer.end {
-			temp := buffer.data
-			buffer.data = make([]byte, len(buffer.data)+buffer.growSize)
-			copy(buffer.data, temp)
+			if 0 != buffer.begin {
+				copy(buffer.data, buffer.data[buffer.begin:buffer.end])				
+				buffer.end = buffer.end - buffer.begin
+				buffer.begin = 0
+			} else {
+			    temp := buffer.data
+			    buffer.data = make([]byte, len(buffer.data)+buffer.growSize)
+			    copy(buffer.data, temp)
+			}
 		}
 		buffer.incomplete = true
 		return nil, 0, true, err // ### return, incomplete ###
@@ -353,15 +404,11 @@ func (buffer *BufferedReader) ReadOne(reader io.Reader) (data []byte, seq uint64
 	msgDataCopy := make([]byte, len(msgData))
 	copy(msgDataCopy, msgData)
 
-	if nextMsgIdx < buffer.end {
-		copy(buffer.data, buffer.data[nextMsgIdx:buffer.end])
-		buffer.end -= nextMsgIdx
-	} else {
-		buffer.end = 0
-		buffer.incomplete = true
+	if (0 != buffer.begin)&&(buffer.begin == buffer.end) {
+		buffer.Reset(buffer.sequence)
 	}
 
 	seqNum := buffer.sequence
 	buffer.sequence++
-	return msgDataCopy, seqNum, buffer.end > 0, err
+	return msgDataCopy, seqNum, (buffer.end - buffer.begin) > 0, err
 }

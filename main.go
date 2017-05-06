@@ -24,6 +24,7 @@ import (
 	_ "github.com/chainlighting/xPipeline/producer"
 	"github.com/chainlighting/xPipeline/shared"
 	_ "github.com/chainlighting/xPipeline/stream"
+	_ "github.com/chainlighting/xPipeline/tidings"
 	"io/ioutil"
 	"os"
 	"runtime"

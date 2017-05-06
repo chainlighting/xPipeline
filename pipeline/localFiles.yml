@@ -1,37 +1,65 @@
-- "consumer.LocalFiles":
+- "consumer.Files":
     Enable: true
     Concurrency: 10
-    Path: "/var/log/kern.log"
-    ExceptPath:
+    ReadBufferGrowSize: 1024001
+    Tidings: "tidings.Profile"
+    MessageSpecial:
+        SliceSize: 4096
+        MsgMetricName: "ProfileMsgCounter"
+    RootPath: "/vagrant/data"
+    AcceptFiles:
+      - "*.dat"
+      - "*.log"
+      - "*.zip"
+    ExceptPaths:
       - "/run"
       - "/proc"
-      - "/var"
       - "/dev"
-      - "/vagrant"
+      - "/sys"
+      - "/mnt"
+      - "/bin"
+      - "/sbin"
+      - "/etc"
+      - "/boot"
+      - "/lib"
+      - "/lib64"
+      - "/usr"
+      - "/media"
+      - "/srv"
     Remain: true
-    KeepRunning: false
+    KeepRunning: true
 
-- "comsumer.LocalFiles":
+- "consumer.Files":
     Enable: false
-    Concurrency: 3
-    Path: "/var/dir/"
+    Concurrency: 10
+    ReadBufferGrowSize: 1024001
+    Tidings: "tidings.Csv"
+    MessageSpecial:
+        Header: true
+        Spliter: ":"
+    RootPath: "/vagrant/data"
+    AcceptFiles:
+      - "*.dat"
+      - "*.log"
+      - "*.zip"
+    ExceptPaths:
+      - "/run"
+      - "/proc"
+      - "/dev"
+      - "/sys"
+      - "/mnt"
+      - "/bin"
+      - "/sbin"
+      - "/etc"
+      - "/boot"
+      - "/lib"
+      - "/lib64"
+      - "/usr"
+      - "/media"
+      - "/srv"
     Remain: true
-    Retry: 3
-    Retrydelay: 30
+    KeepRunning: true
 
-- "consumer.LocalFiles":
-    Enable: false
-    Concurrency: 3
-    Path: "/var/dir/"
-    Retry: 3
-    Retrydelay: 30
-
-- "comsumer.LocalFiles":
-    Enable: false
-    Concurrency: 3
-    Path: "/var/dir/file"
-    Retry: 3
-    Retrydelay: 30
 
 - "producer.Console":
     Enable: true

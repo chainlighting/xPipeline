@@ -73,6 +73,7 @@ type ConsumerBase struct {
 	streams      []MappedStream
 	runState     *PluginRunState
 	fuse         *shared.Fuse
+	Gtidings     Tidings
 	onRoll       func()
 	onStop       func()
 	onFuseBurned func()
@@ -98,6 +99,12 @@ func (cons *ConsumerBase) Configure(conf PluginConfig) error {
 	if fuseName != "" {
 		cons.fuse = StreamRegistry.GetFuse(fuseName)
 	}
+
+	tidings, err := NewPluginWithType(conf.GetString("Tidings", "tidings.Csv"), conf)
+	if err != nil {
+		return err // ### return, nested plugin load error ###
+	}
+	cons.Gtidings = tidings.(Tidings)
 
 	return nil
 }

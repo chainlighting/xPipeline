@@ -34,16 +34,16 @@ func (br *bufferedReaderTestData) write(data []byte, seq uint64) {
 }
 
 func TestBufferedReaderComplex(t *testing.T) {
-	callback := func(data []byte,dataLen int) (msgLen int,startOffset int) {
+	callback := func(data []byte) (msgLen int,startOffset int,padOffset int) {
 		//struct {len uint8,data []byte}
-		if dataLen > 0 {
+		if len(data) > 0 {
 			segLen := int(data[0])
-			if segLen <= dataLen {
+			if segLen <= len(data) {
 				// return data and skip len(uint8)
-				return segLen,1
+				return segLen,1,0
 			}
 		}
-		return 0,0
+		return 0,0,0
 	}
 
 	data := bufferedReaderTestData{
@@ -59,7 +59,7 @@ func TestBufferedReaderComplex(t *testing.T) {
 	}
 
 	parseReader := bytes.NewReader(parseData)
-	reader := NewBufferedReader(1024, 0, 0, "",callback)
+	reader := NewBufferedReader(len(parseData) - 10, 0, 0, "",callback)
 
 	err := reader.ReadAll(parseReader, data.write)
 	data.expect.NoError(err)
